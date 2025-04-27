@@ -2,7 +2,9 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 import random
-from tabulate import tabulate
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score
 
 
  # funkcja tworzy sieć dwuwarstwową
@@ -79,10 +81,6 @@ def ucz2(W1przed, W2przed,P,T,n,learning_rate=0.01,batch_size=4, B=5):
     mse_errors_layer1 = []
     mse_errors_layer2 = []
     ce_accuracies = []
-    dW1 = np.zeros_like(W1)
-    dW2 = np.zeros_like(W2)
-    X1_rozszerzone = 0
-    X2_rozszerzone = 0
     dW1pokaz = 0
     dW2pokaz = 0
     total_error_layer1 = 0
@@ -90,22 +88,17 @@ def ucz2(W1przed, W2przed,P,T,n,learning_rate=0.01,batch_size=4, B=5):
 
     for krok_uczenia in range(1, n + 1):
         correct_predictions = 0
-        for krok_pokazu in range(batch_size):
+        for krok_pokazu in range(liczbaPrzykladow):
             # losuj numer przykładu
             nrPrzykladu = np.random.randint(liczbaPrzykladow, size=1)
 
-            # podaj przykład na wejścia i oblicz wyjścia
             X = P[:, nrPrzykladu]
-            # X1 = np.vstack((-1, X))
             Y1, Y2, X1, X2 = dzialaj2(W1, W2, X)
 
             prediction = 1 if Y2 >= 0.5 else 0
             if prediction == T[:, nrPrzykladu]:
                 correct_predictions += 1
 
-            # X2 = np.vstack((-1, Y1))
-
-            # oblicz błędy na wyjściach warstw
             D2 = T[:, nrPrzykladu] - Y2
             E2 = B * D2 * Y2 * (1 - Y2)
 
@@ -115,9 +108,7 @@ def ucz2(W1przed, W2przed,P,T,n,learning_rate=0.01,batch_size=4, B=5):
             # zliczanie błędu średniokwadratowego
             total_error_layer1 += np.sum(D1 ** 2 / 2)
             total_error_layer2 += np.sum(D2 ** 2 / 2)
-            # print(X1.shape[0], X1.shape[1])
-            # print(E1.shape[0], E1.shape[1])
-            # oblicz poprawki wag (momentum)
+
             dW1 = learning_rate* X1 * E1.T
             dW2 = learning_rate * X2 * E2.T
 
@@ -139,7 +130,7 @@ def ucz2(W1przed, W2przed,P,T,n,learning_rate=0.01,batch_size=4, B=5):
         total_error_layer1 = 0
         total_error_layer2 = 0
 
-        accuracy = correct_predictions / ( batch_size)
+        accuracy = correct_predictions / ( liczbaPrzykladow)
         ce_accuracies.append(accuracy)
 
 
@@ -151,8 +142,8 @@ def test2(W1, W2, P, T, B=5):
     correct_predictions = 0
     total_predictions = T.shape[1]
     tab = []
-    print("Wartości oczekiwane")
-    print(f"{T}")
+    # print("Wartości oczekiwane")
+    # print(f"{T}")
     for i in range(T.shape[1]):
         _, Y2,_,_ = dzialaj2(W1, W2, P[:, [i]], B)
 
@@ -161,8 +152,8 @@ def test2(W1, W2, P, T, B=5):
             correct_predictions += 1
         tab.append(Y2)
     tab_np = np.array(tab)
-    print("Wyniki")
-    print(f"{tab_np}")
+    # print("Wyniki")
+    # print(f"{tab_np}")
     accuracy = correct_predictions / total_predictions
     return accuracy, correct_predictions, total_predictions
 
@@ -196,33 +187,67 @@ def plot_errors(mse_errors_layer1, mse_errors_layer2, ce_accuracies):
     plt.show()
 
 
-P = np.array([[0, 0, 1, 1],
-              [0, 1, 0, 1]])
-T = np.array([[0, 1, 1, 0]])
-W1, W2 = init2(2,2,1)
-print("Initial weights:")
-print("W1:", W1)
-print("W2:", W2)
-print("First input example:", P[0])
-Y1, Y2,_,_ = dzialaj2(W1, W2, P[:, [0]])
-print("Output of layer 1:", Y1)
-print("Output of layer 2:", Y2)
+# URL of the Pima Indian Diabetes dataset
+url = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv"
+
+# Define column names (as the dataset from this URL does not include headers)
+column_names = [
+    'Pregnancies', 'Glucose', 'BloodPressure', 'SkinThickness',
+    'Insulin', 'BMI', 'DiabetesPedigreeFunction', 'Age', 'Outcome'
+]
+
+# Load the dataset directly from the URL
+df = pd.read_csv(url, header=None, names=column_names)
+
+# Display the first few rows of the dataset
+print("First 5 rows of the dataset:")
+print(df.head())
+
+# Display summary statistics of the dataset
+print("\nSummary statistics of the dataset:")
+print(df.describe())
+
+# Display data types of each column
+print("\nData types of each column:")
+print(df.dtypes)
+
+# Pre-process the data
+X = df.iloc[:, :-1].values
+y = df.iloc[:, -1].values
+
+# Normalize the features
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.3, random_state=42)
+
+# Transpose the data for the neural network
+P_train = X_train.T
+T_train = y_train.reshape(1, -1)
+
+P_test = X_test.T
+T_test = y_test.reshape(1, -1)
+
+# Initialize the weights
+S = P_train.shape[0]
+print(P_train.shape[1])
+print(P_test.shape[1])
+K1 = 10  # Number of neurons in the hidden layer (can be adjusted)
+K2 = 1   # Single output neuron for binary classification
+W1, W2 = init2(S, K1, K2)
 
 # Train the network
-n_steps = 10000
+n_steps = 500
 learning_rate = 0.1
-W1_trained, W2_trained, mse_errors_layer1, mse_errors_layer2,ce_accuracies = ucz2(W1, W2, P, T, n_steps,learning_rate)
+W1_trained, W2_trained, mse_errors_layer1, mse_errors_layer2, ce_accuracies = ucz2(W1, W2, P_train, T_train, n_steps, learning_rate)
 
 # Test the network
-accuracy, correct_predictions, total_predictions = test2(W1_trained, W2_trained, P, T)
+accuracy, correct_predictions, total_predictions= test2(W1_trained, W2_trained, P_test, T_test)
 
 print(f"Accuracy: {accuracy*100:.2f}%")
 print(f"Correct Predictions: {correct_predictions}")
 print(f"Total Predictions: {total_predictions}")
 
-# pokazEfektNaukiSieci()
 # Plot errors and accuracy
 plot_errors(mse_errors_layer1, mse_errors_layer2, ce_accuracies)
-
-# sigmoid derivative
-# sam gradient

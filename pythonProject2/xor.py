@@ -75,14 +75,9 @@ def ucz2(W1przed, W2przed,P,T,n,learning_rate=0.01,batch_size=4, B=5):
     W2 = W2przed.copy()
     S2 = W2.shape[0]
     liczbaPrzykladow = P.shape[1]
-    # print(W2.shape[0],W2.shape[1])
     mse_errors_layer1 = []
     mse_errors_layer2 = []
     ce_accuracies = []
-    dW1 = np.zeros_like(W1)
-    dW2 = np.zeros_like(W2)
-    X1_rozszerzone = 0
-    X2_rozszerzone = 0
     dW1pokaz = 0
     dW2pokaz = 0
     total_error_layer1 = 0
@@ -94,18 +89,13 @@ def ucz2(W1przed, W2przed,P,T,n,learning_rate=0.01,batch_size=4, B=5):
             # losuj numer przykładu
             nrPrzykladu = np.random.randint(liczbaPrzykladow, size=1)
 
-            # podaj przykład na wejścia i oblicz wyjścia
             X = P[:, nrPrzykladu]
-            # X1 = np.vstack((-1, X))
             Y1, Y2, X1, X2 = dzialaj2(W1, W2, X)
 
             prediction = 1 if Y2 >= 0.5 else 0
             if prediction == T[:, nrPrzykladu]:
                 correct_predictions += 1
 
-            # X2 = np.vstack((-1, Y1))
-
-            # oblicz błędy na wyjściach warstw
             D2 = T[:, nrPrzykladu] - Y2
             E2 = B * D2 * Y2 * (1 - Y2)
 
@@ -115,9 +105,7 @@ def ucz2(W1przed, W2przed,P,T,n,learning_rate=0.01,batch_size=4, B=5):
             # zliczanie błędu średniokwadratowego
             total_error_layer1 += np.sum(D1 ** 2 / 2)
             total_error_layer2 += np.sum(D2 ** 2 / 2)
-            # print(X1.shape[0], X1.shape[1])
-            # print(E1.shape[0], E1.shape[1])
-            # oblicz poprawki wag (momentum)
+
             dW1 = learning_rate* X1 * E1.T
             dW2 = learning_rate * X2 * E2.T
 
